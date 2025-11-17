@@ -39,6 +39,11 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
+# CSRF trusted origins (required for HTTPS domains like Railway)
+csrf_origins_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_origins_env:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins_env.split(',') if origin.strip()]
+
 # AWS S3 Configuration (needed early for middleware configuration)
 USE_S3 = os.environ.get('USE_S3', 'False') == 'True'
 
