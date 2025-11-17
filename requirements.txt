@@ -34,7 +34,11 @@ django-allauth==0.57.0
 
 # Utilities
 python-dateutil==2.8.2
-python-magic-bin==0.4.14
+# python-magic only provides Windows wheels via the ``-bin`` package.
+# Using environment markers keeps deployments working on Linux hosts (e.g. Railway)
+# while still supporting Windows development machines.
+python-magic==0.4.27; sys_platform != "win32"
+python-magic-bin==0.4.14; sys_platform == "win32"
 python-decouple==3.8
 python-dotenv>=1.0.0
 
