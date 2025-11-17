@@ -120,8 +120,16 @@ class DocumentUploadView(LoginRequiredMixin, CreateView):
             
             # Probar conexión antes de procesar
             if not extractor.test_connection():
-                raise Exception("No se pudo conectar con el servicio de inteligencia artificial. Por favor, verifica tu conexión a internet e inténtalo de nuevo.")
-            
+                # Manejo controlado cuando no hay cuota/conectividad/modelo inválido
+                logger.warning("Gemini no disponible o modelo inválido. Documento marcado como error amigable.")
+                document.status = 'error'
+                document.error_message = (
+                    "El servicio de IA no está disponible en este momento (cuota, conectividad o modelo no soportado). "
+                    "Inténtalo de nuevo más tarde o verifica la configuración."
+                )
+                document.save()
+                return
+
             logger.info("Conexión con Gemini establecida correctamente")
             
             # Extraer información usando Gemini con timeout

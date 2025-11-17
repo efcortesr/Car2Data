@@ -1,6 +1,6 @@
 # Guía de Despliegue en AWS Academy con Dominio Personalizado
 
-Esta guía te llevará paso a paso para desplegar tu proyecto Django (Car2Data) en AWS Academy usando EC2, RDS, S3 y configurar un dominio personalizado.
+Esta guía te llevará paso a paso para desplegar tu proyecto Django (Car2Data) en AWS Academy usando únicamente EC2 con Amazon Linux y configurar un dominio personalizado (sin usar RDS, S3, ni otros servicios de AWS distintos a EC2).
 
 ---
 
@@ -17,11 +17,11 @@ Esta guía te llevará paso a paso para desplegar tu proyecto Django (Car2Data) 
 ## 🎯 Arquitectura del Despliegue
 
 ```
-Internet → Route 53 (DNS) → ALB (Load Balancer) → EC2 (Django + Gunicorn + Nginx)
-                                                      ↓
-                                                    RDS (PostgreSQL)
-                                                      ↓
-                                                    S3 (Media Files)
+Internet → DNS de tu proveedor → EC2 (Amazon Linux) → Nginx + Gunicorn + Django
+                                              ↓
+                                     PostgreSQL local (en EC2) o SQLite
+                                              ↓
+                                    Archivos estáticos/media en disco
 ```
 
 ---
@@ -49,17 +49,25 @@ ALLOWED_HOSTS = [
     'tu-instancia-ec2.compute.amazonaws.com'
 ]
 
-# Database - PostgreSQL en RDS
+# Database (elige UNA opción)
+# Opción A: PostgreSQL local en EC2
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'car2data_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST', 'tu-rds-endpoint.rds.amazonaws.com'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
+# Opción B (simple): SQLite en disco
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -69,11 +77,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# AWS S3 Configuration (opcional para archivos estáticos)
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = 'us-east-1'  # Cambia según tu región
+# No se usa S3: archivos servidos desde el disco del EC2
 
 # Security Settings
 SECURE_SSL_REDIRECT = True
@@ -96,8 +100,6 @@ Asegúrate de incluir:
 Django==4.2.7
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
-boto3==1.29.7
-django-storages==1.14.2
 python-decouple==3.8
 whitenoise==6.6.0
 ```
@@ -110,12 +112,9 @@ DJANGO_SECRET_KEY=tu-secret-key-aqui
 DEBUG=False
 DB_NAME=car2data_db
 DB_USER=postgres
-DB_PASSWORD=tu-password-seguro
-DB_HOST=tu-rds-endpoint.rds.amazonaws.com
+DB_PASSWORD=tu-password-de-rds
+DB_HOST=127.0.0.1
 DB_PORT=5432
-AWS_ACCESS_KEY_ID=tu-access-key
-AWS_SECRET_ACCESS_KEY=tu-secret-key
-AWS_STORAGE_BUCKET_NAME=car2data-media
 ```
 
 ---
@@ -136,7 +135,7 @@ AWS_STORAGE_BUCKET_NAME=car2data-media
 
 3. **Configuración de la Instancia**
    - **Name**: `car2data-production`
-   - **AMI**: Ubuntu Server 22.04 LTS (Free tier eligible)
+   - **AMI**: Amazon Linux 2023 (Free tier eligible)
    - **Instance type**: `t2.medium` (recomendado) o `t2.small` (mínimo)
    - **Key pair**: Crea un nuevo par de llaves → `car2data-key.pem` → Descárgalo
    - **Network settings**:
@@ -157,71 +156,6 @@ AWS_STORAGE_BUCKET_NAME=car2data-media
    → Associate Elastic IP address → Selecciona tu instancia
    ```
 
-### 2.2 Crear Base de Datos RDS (PostgreSQL)
-
-1. **Ir a RDS**
-   ```
-   Servicios → RDS → Create database
-   ```
-
-2. **Configuración**
-   - **Engine**: PostgreSQL 15.x
-   - **Templates**: Free tier
-   - **DB instance identifier**: `car2data-db`
-   - **Master username**: `postgres`
-   - **Master password**: Crea una contraseña segura (guárdala)
-   - **DB instance class**: db.t3.micro
-   - **Storage**: 20 GB gp3
-   - **Connectivity**:
-     - VPC: Default
-     - Public access: Yes (para desarrollo; No en producción real)
-     - VPC security group: Crear nuevo → `car2data-db-sg`
-   - **Additional configuration**:
-     - Initial database name: `car2data_db`
-
-3. **Modificar Security Group de RDS**
-   ```
-   EC2 → Security Groups → car2data-db-sg → Inbound rules → Edit
-   → Add rule: PostgreSQL (5432) → Source: Security Group de EC2
-   ```
-
-### 2.3 Crear Bucket S3 para Media Files
-
-1. **Ir a S3**
-   ```
-   Servicios → S3 → Create bucket
-   ```
-
-2. **Configuración**
-   - **Bucket name**: `car2data-media-files` (debe ser único globalmente)
-   - **Region**: us-east-1 (o la misma de tu EC2)
-   - **Block Public Access**: Desmarcar (solo si necesitas acceso público)
-   - **Bucket Versioning**: Enable (recomendado)
-
-3. **Configurar CORS**
-   ```
-   Bucket → Permissions → CORS → Edit
-   ```
-   ```json
-   [
-       {
-           "AllowedHeaders": ["*"],
-           "AllowedMethods": ["GET", "POST", "PUT", "DELETE"],
-           "AllowedOrigins": ["https://tu-dominio.com"],
-           "ExposeHeaders": []
-       }
-   ]
-   ```
-
-4. **Crear IAM User para S3**
-   ```
-   IAM → Users → Add user
-   → User name: car2data-s3-user
-   → Attach policies: AmazonS3FullAccess
-   → Create user → Security credentials → Create access key
-   → Guarda Access Key ID y Secret Access Key
-   ```
-
 ---
 
 ## 🔧 PARTE 3: Configurar el Servidor EC2
@@ -235,40 +169,60 @@ Move-Item .\car2data-key.pem ~\.ssh\
 
 # Cambiar permisos (solo lectura para ti)
 icacls ~\.ssh\car2data-key.pem /inheritance:r
-icacls ~\.ssh\car2data-key.pem /grant:r "$($env:USERNAME):(R)"
+icacls ~\.ssh\car2data-key.pem /grant:r "$( $env:USERNAME ):(R)"
 
 # Conectar
-ssh -i ~\.ssh\car2data-key.pem ubuntu@TU-IP-ELASTICA
+ssh -i ~\.ssh\car2data-key.pem ec2-user@TU-IP-ELASTICA
 ```
 
 **Linux/Mac:**
 ```bash
 chmod 400 car2data-key.pem
-ssh -i car2data-key.pem ubuntu@TU-IP-ELASTICA
+ssh -i car2data-key.pem ec2-user@TU-IP-ELASTICA
 ```
 
-### 3.2 Instalar Dependencias en EC2
+### 3.2 Instalar Dependencias en EC2 (Amazon Linux 2023)
 
 ```bash
 # Actualizar sistema
-sudo apt update && sudo apt upgrade -y
+sudo dnf update -y
 
-# Instalar Python y herramientas
-sudo apt install -y python3.11 python3.11-venv python3-pip
-sudo apt install -y postgresql-client libpq-dev
-sudo apt install -y nginx git curl
+# Instalar Python y herramientas de compilación
+sudo dnf install -y python3.11 python3.11-devel python3.11-venv gcc
 
-# Instalar Node.js (si usas npm para frontend)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+# Instalar PostgreSQL local (servidor y cliente) - Amazon Linux 2023 usa paquetes versionados
+sudo dnf install -y postgresql15 postgresql15-server postgresql15-devel
+
+# Instalar Nginx, Git y utilidades
+sudo dnf install -y nginx git curl
+
+# (Opcional) Node.js si usas npm para frontend
+# sudo dnf module reset nodejs -y && sudo dnf module enable nodejs:20 -y && sudo dnf install -y nodejs
 ```
 
-### 3.3 Clonar y Configurar el Proyecto
+### 3.3 Inicializar PostgreSQL local
+
+```bash
+# Inicializar base de datos y habilitar servicio (versión 15)
+sudo /usr/pgsql-15/bin/postgresql-15-setup initdb
+sudo systemctl enable postgresql-15
+sudo systemctl start postgresql-15
+
+# Crear usuario y base de datos
+sudo -u postgres /usr/pgsql-15/bin/psql -c "ALTER USER postgres WITH PASSWORD 'tu-password-de-rds';"  # cambia la contraseña
+sudo -u postgres /usr/pgsql-15/bin/psql -c "CREATE DATABASE car2data_db OWNER postgres;"
+
+# Permitir conexiones locales (peer → md5)
+sudo sed -i 's/^host\s\+all\s\+all\s\+127.0.0.1\/32\s\+ident/host    all             all             127.0.0.1\/32            md5/' /var/lib/pgsql/15/data/pg_hba.conf || true
+sudo systemctl restart postgresql-15
+```
+
+### 3.4 Clonar y Configurar el Proyecto
 
 ```bash
 # Crear directorio para la aplicación
 sudo mkdir -p /var/www/car2data
-sudo chown -R ubuntu:ubuntu /var/www/car2data
+sudo chown -R ec2-user:ec2-user /var/www/car2data
 cd /var/www/car2data
 
 # Clonar repositorio
@@ -289,21 +243,32 @@ nano .env
 **Contenido de `.env`:**
 ```bash
 DJANGO_SECRET_KEY=genera-una-nueva-secret-key-aqui
-DEBUG=False
 DB_NAME=car2data_db
 DB_USER=postgres
-DB_PASSWORD=tu-password-de-rds
-DB_HOST=tu-rds-endpoint.rds.amazonaws.com
+DB_PASSWORD=Plastinemor282006*
+DB_HOST=127.0.0.1
 DB_PORT=5432
-AWS_ACCESS_KEY_ID=tu-access-key-de-iam
-AWS_SECRET_ACCESS_KEY=tu-secret-key-de-iam
-AWS_STORAGE_BUCKET_NAME=car2data-media-files
-ALLOWED_HOSTS=tu-dominio.com,www.tu-dominio.com,tu-ip-elastica
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1,98.80.15.165,car2data.com,www.car2data.com
+
+# AI Services
+OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=AIzaSyDvCpz8ZTxm3FsLuyfrvD8WYu5AO7yiGWo
+# Email (Production)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-email-password
+EMAIL_USE_TLS=True
+# Credenciales de Google OAuth
+GOOGLE_CLIENT_ID=463729271301-lnbr7ct7egho1u1kqp0178q7pt74b6pv.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 ```
 
 **Guardar:** `Ctrl+O` → Enter → `Ctrl+X`
 
-### 3.4 Configurar Django
+### 3.5 Configurar Django
 
 ```bash
 # Activar entorno virtual
@@ -343,8 +308,8 @@ Description=Gunicorn daemon for Car2Data Django app
 After=network.target
 
 [Service]
-User=ubuntu
-Group=www-data
+User=ec2-user
+Group=nginx
 WorkingDirectory=/var/www/car2data/car2data_project
 Environment="PATH=/var/www/car2data/venv/bin"
 EnvironmentFile=/var/www/car2data/.env
@@ -367,7 +332,7 @@ sudo systemctl status gunicorn
 ### 4.2 Configurar Nginx
 
 ```bash
-sudo nano /etc/nginx/sites-available/car2data
+sudo nano /etc/nginx/conf.d/car2data.conf
 ```
 
 **Contenido:**
@@ -400,7 +365,6 @@ server {
 
 **Activar configuración:**
 ```bash
-sudo ln -s /etc/nginx/sites-available/car2data /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -412,7 +376,7 @@ sudo systemctl restart nginx
 ### 5.1 Instalar Certbot
 
 ```bash
-sudo apt install -y certbot python3-certbot-nginx
+sudo dnf install -y certbot python3-certbot-nginx
 ```
 
 ### 5.2 Obtener Certificado SSL
@@ -569,19 +533,22 @@ sudo systemctl reload nginx
 
 ## 🛡️ PARTE 9: Seguridad Adicional
 
-### 9.1 Configurar Firewall (UFW)
+### 9.1 Configurar Firewall (opcional)
 
 ```bash
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
-sudo ufw status
+# Amazon Linux no incluye UFW por defecto. Puedes usar security groups de EC2.
+# (Opcional) Instalar y usar firewalld
+# sudo dnf install -y firewalld
+# sudo systemctl enable --now firewalld
+# sudo firewall-cmd --permanent --add-service=http
+# sudo firewall-cmd --permanent --add-service=https
+# sudo firewall-cmd --reload
 ```
 
 ### 9.2 Fail2Ban (Protección contra ataques)
 
 ```bash
-sudo apt install -y fail2ban
+sudo dnf install -y fail2ban
 sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
 ```
@@ -589,26 +556,16 @@ sudo systemctl start fail2ban
 ### 9.3 Backups Automáticos
 
 ```bash
-# Crear script de backup
-sudo nano /usr/local/bin/backup-car2data.sh
-```
-
-**Contenido:**
-```bash
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/var/backups/car2data"
 mkdir -p $BACKUP_DIR
 
-# Backup de base de datos
+# Backup de base de datos (PostgreSQL local)
 PGPASSWORD=$DB_PASSWORD pg_dump -h $DB_HOST -U $DB_USER $DB_NAME > $BACKUP_DIR/db_$DATE.sql
 
 # Backup de archivos media
 tar -czf $BACKUP_DIR/media_$DATE.tar.gz /var/www/car2data/car2data_project/media
-
-# Subir a S3 (opcional)
-aws s3 cp $BACKUP_DIR/db_$DATE.sql s3://car2data-backups/
-aws s3 cp $BACKUP_DIR/media_$DATE.tar.gz s3://car2data-backups/
 
 # Limpiar backups antiguos (más de 7 días)
 find $BACKUP_DIR -type f -mtime +7 -delete
@@ -616,7 +573,6 @@ find $BACKUP_DIR -type f -mtime +7 -delete
 
 **Automatizar con Cron:**
 ```bash
-sudo chmod +x /usr/local/bin/backup-car2data.sh
 sudo crontab -e
 ```
 
@@ -630,8 +586,6 @@ Agregar:
 ## ✅ Checklist Final
 
 - [ ] EC2 instancia corriendo con IP elástica
-- [ ] RDS PostgreSQL configurado y conectado
-- [ ] S3 bucket creado para media files
 - [ ] Proyecto clonado y configurado en EC2
 - [ ] Gunicorn corriendo como servicio
 - [ ] Nginx configurado y corriendo
@@ -639,7 +593,7 @@ Agregar:
 - [ ] DNS apuntando a IP elástica
 - [ ] Dominio accesible vía HTTPS
 - [ ] Backups automáticos configurados
-- [ ] Firewall y seguridad configurados
+- [ ] Seguridad configurada
 
 ---
 
@@ -666,13 +620,13 @@ python manage.py collectstatic --noinput
 sudo systemctl restart nginx
 ```
 
-### Problema: "No se puede conectar a RDS"
+### Problema: "No se puede conectar a PostgreSQL local"
 ```bash
-# Verificar security group de RDS
-# Debe permitir tráfico desde security group de EC2 en puerto 5432
+# Verificar servicio
+sudo systemctl status postgresql
 
-# Probar conexión
-psql -h tu-rds-endpoint.rds.amazonaws.com -U postgres -d car2data_db
+# Probar conexión local
+psql -h 127.0.0.1 -U postgres -d car2data_db
 ```
 
 ### Problema: "Domain no resuelve"
@@ -701,8 +655,8 @@ nslookup tu-dominio.com
 Tu aplicación Car2Data ahora está desplegada en AWS Academy con:
 - ✅ Dominio personalizado
 - ✅ HTTPS/SSL
-- ✅ Base de datos PostgreSQL en RDS
-- ✅ Archivos media en S3
+- ✅ Base de datos PostgreSQL local en EC2 (o SQLite)
+- ✅ Archivos estáticos/media en el disco del servidor
 - ✅ Servidor de producción con Gunicorn + Nginx
 - ✅ Backups automáticos
 - ✅ Seguridad configurada

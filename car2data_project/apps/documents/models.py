@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
 import json
 
 
@@ -29,6 +30,16 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.user.username}"
+
+    @property
+    def safe_file_size(self):
+        """Devuelve el tamaño del archivo en bytes o None si el archivo no existe."""
+        try:
+            if self.file and self.file.name and default_storage.exists(self.file.name):
+                return self.file.size
+        except (FileNotFoundError, OSError, ValueError):
+            return None
+        return None
 
     def get_extracted_data(self):
         """Retorna los datos extraídos como diccionario"""
@@ -161,22 +172,27 @@ class Document(models.Model):
         """
         from apps.vehicles.models import Persona
 
-        structured_data = self.get_structured_data()
-        persona_data = structured_data.get('propietario', {})
+        structured_data = self.get_structured_data() or {}
+        raw_persona = structured_data.get('propietario') or {}
 
-        if not persona_data.get('identificacion'):
+        def s(key, default=''):
+            val = raw_persona.get(key, default)
+            return (val or '').strip()
+
+        identificacion = s('identificacion')
+        if not identificacion:
             return None
 
         try:
-            persona = Persona.objects.get(numero_documento=persona_data['identificacion'])
+            persona = Persona.objects.get(numero_documento=identificacion)
         except Persona.DoesNotExist:
             persona = Persona.objects.create(
-                nombre=persona_data.get('nombre', ''),
-                numero_documento=persona_data.get('identificacion', ''),
+                nombre=s('nombre'),
+                numero_documento=identificacion,
                 tipo_documento='CC',  # Asumir cédula por defecto
-                direccion=persona_data.get('direccion', ''),
-                telefono=persona_data.get('telefono', ''),
-                ciudad=persona_data.get('ciudad', ''),
+                direccion=s('direccion'),
+                telefono=s('telefono'),
+                ciudad=s('ciudad'),
             )
 
         return persona

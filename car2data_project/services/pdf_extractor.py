@@ -24,9 +24,22 @@ class PDFExtractor:
             # Configurar con la API key
             genai.configure(api_key=self.api_key)
             
-            # Usar gemini-2.0-flash-exp (versión experimental más reciente)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            logger.info("Gemini configurado correctamente con gemini-2.0-flash-exp")
+            # Permitir configurar el modelo por variable de entorno; default a un modelo estable
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+            try:
+                self.model = genai.GenerativeModel(model_name)
+            except Exception:
+                # Algunos clientes requieren prefijo 'models/'
+                alt_name = f"models/{model_name}" if not model_name.startswith("models/") else model_name
+                try:
+                    self.model = genai.GenerativeModel(alt_name)
+                    model_name = alt_name
+                except Exception:
+                    # Fallback a un modelo conocido compatible
+                    fallback = 'gemini-2.0-flash'
+                    self.model = genai.GenerativeModel(fallback)
+                    model_name = fallback
+            logger.info(f"Gemini configurado correctamente con {model_name}")
                 
         except Exception as e:
             logger.error(f"Error en la respuesta de Gemini: {str(e)}")
@@ -192,11 +205,19 @@ class PDFExtractor:
         return self._analyze_with_vision(pdf_path)
     
     def test_connection(self) -> bool:
-        """Prueba la conexión con Gemini"""
+        """Prueba la conexión con Gemini. En caso de 429 (cuota), devuelve False sin lanzar excepción."""
         try:
             test_prompt = "Responde con un JSON simple: {\"test\": \"ok\"}"
             response = self.model.generate_content(test_prompt)
             return bool(response and response.text)
         except Exception as e:
-            logger.error(f"Error inesperado al extraer información: {str(e)}")
-            raise Exception(f"Ocurrió un error inesperado al procesar el documento. Por favor, inténtalo de nuevo más tarde.")
+            # Manejo explícito de errores de cuota (429)
+            try:
+                from google.api_core.exceptions import ResourceExhausted
+                if isinstance(e, ResourceExhausted):
+                    logger.warning("Cuota de Gemini agotada (429). test_connection devuelve False.")
+                    return False
+            except Exception:
+                pass
+            logger.error(f"Error en test_connection: {str(e)}")
+            return False
