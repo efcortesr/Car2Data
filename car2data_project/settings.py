@@ -228,6 +228,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
+# Email API (Resend)
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "")
+
 # Email Configuration
 FORCE_SMTP_EMAIL = os.environ.get('FORCE_SMTP_EMAIL', 'False') == 'True'
 

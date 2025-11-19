@@ -16,6 +16,7 @@ from datetime import timedelta
 from django.core.mail import send_mail
 from django.conf import settings
 from django.views import View
+import resend
 
 class LoginView(DjangoLoginView):
     template_name = 'authentication/login.html'
@@ -93,14 +94,33 @@ Equipo Car2Data'''
         print(f"{'='*50}\n")
         
         try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-            print("✅ Email enviado exitosamente")
+            api_key = getattr(settings, "RESEND_API_KEY", "")
+            if not settings.DEBUG and api_key:
+                resend.api_key = api_key
+                from_email = getattr(settings, "RESEND_FROM_EMAIL", "") or settings.DEFAULT_FROM_EMAIL
+                resend.Emails.send(
+                    {
+                        "from": from_email,
+                        "to": [email],
+                        "subject": subject,
+                        "text": message,
+                    }
+                )
+                print("✅ Email enviado vía Resend")
+            else:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+                print("✅ Email enviado exitosamente")
+        except SystemExit as e:
+            # En algunos entornos, fallos de conexión SMTP provocan SystemExit,
+            # lo que tumba el worker de Gunicorn si no se captura.
+            print(f"⚠️  Error crítico al enviar email (SystemExit): {e}")
+            print("💡 Usa el código mostrado arriba para verificar tu cuenta")
         except Exception as e:
             print(f"⚠️  Error al enviar email: {e}")
             print("💡 Usa el código mostrado arriba para verificar tu cuenta")
@@ -364,10 +384,27 @@ Equipo Car2Data'''
         print(f"{'='*50}\n")
         
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
-            print("✅ Email reenviado exitosamente")
+            api_key = getattr(settings, "RESEND_API_KEY", "")
+            if not settings.DEBUG and api_key:
+                resend.api_key = api_key
+                from_email = getattr(settings, "RESEND_FROM_EMAIL", "") or settings.DEFAULT_FROM_EMAIL
+                resend.Emails.send(
+                    {
+                        "from": from_email,
+                        "to": [email],
+                        "subject": subject,
+                        "text": message,
+                    }
+                )
+                print("✅ Email reenviado vía Resend")
+            else:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+                print("✅ Email reenviado exitosamente")
+        except SystemExit as e:
+            print(f"⚠️  Error crítico al reenviar email (SystemExit): {e}")
+            print("💡 Usa el código mostrado arriba para verificar tu cuenta")
         except Exception as e:
-            print(f"⚠️  Error al enviar email: {e}")
+            print(f"⚠️  Error al reenviar email: {e}")
             print("💡 Usa el código mostrado arriba para verificar tu cuenta")
 
 class ForgotPasswordView(TemplateView):
@@ -436,10 +473,27 @@ Equipo Car2Data'''
         print(f"{'='*50}\n")
         
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
-            print("✅ Email de recuperación enviado exitosamente")
+            api_key = getattr(settings, "RESEND_API_KEY", "")
+            if not settings.DEBUG and api_key:
+                resend.api_key = api_key
+                from_email = getattr(settings, "RESEND_FROM_EMAIL", "") or settings.DEFAULT_FROM_EMAIL
+                resend.Emails.send(
+                    {
+                        "from": from_email,
+                        "to": [email],
+                        "subject": subject,
+                        "text": message,
+                    }
+                )
+                print("✅ Email de recuperación enviado vía Resend")
+            else:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+                print("✅ Email de recuperación enviado exitosamente")
+        except SystemExit as e:
+            print(f"⚠️  Error crítico al enviar email de recuperación (SystemExit): {e}")
+            print("💡 Usa el código mostrado arriba para recuperar tu contraseña")
         except Exception as e:
-            print(f"⚠️  Error al enviar email: {e}")
+            print(f"⚠️  Error al enviar email de recuperación: {e}")
             print("💡 Usa el código mostrado arriba para recuperar tu contraseña")
 
 class VerifyResetCodeView(TemplateView):
