@@ -256,91 +256,27 @@
                         </div>
                     </div>
 
-                    <!-- Payment Form -->
+                    <!-- Contacto por WhatsApp en lugar de formulario de pago -->
                     <div class="glass-card rounded-2xl p-8">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-6">Información de Pago</h3>
-                        
-                        {% if messages %}
-                        <div class="mb-6">
-                            {% for message in messages %}
-                            <div class="p-4 rounded-lg {% if message.tags == 'success' %}bg-green-50 text-green-800{% else %}bg-red-50 text-red-800{% endif %}">
-                                {{ message }}
-                            </div>
-                            {% endfor %}
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Habla con nuestro equipo</h3>
+                        <p class="text-gray-700 mb-6">
+                            Si quieres mejorar tu plan, contáctanos directamente por WhatsApp y te ayudaremos a completar el proceso.
+                        </p>
+
+                        <a
+                            href="https://wa.me/573124243234?text=Hola%20equipo%20car2data%2C%20estoy%20interesado%20en%20mejorar%20mi%20plan"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="payment-btn"
+                        >
+                            <i class="fab fa-whatsapp"></i>
+                            <span>Escribir por WhatsApp</span>
+                        </a>
+
+                        <div class="mt-6 text-center text-sm text-gray-500">
+                            <p>Te responderemos lo antes posible para ayudarte a activar tu plan Pro.</p>
                         </div>
-                        {% endif %}
-                        
-                        <form method="post" action="{% url 'authentication:checkout' %}" class="space-y-6">
-                            {% csrf_token %}
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Nombre del titular
-                                </label>
-                                <input
-                                    type="text"
-                                    name="card_name"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-transparent"
-                                    placeholder="Juan Pérez"
-                                    required
-                                >
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Número de tarjeta
-                                </label>
-                                <input
-                                    type="text"
-                                    name="card_number"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-transparent"
-                                    placeholder="1234 5678 9012 3456"
-                                    maxlength="19"
-                                    required
-                                >
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha de expiración
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="card_expiry"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-transparent"
-                                        placeholder="MM/AA"
-                                        maxlength="5"
-                                        required
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        CVV
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="card_cvv"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-transparent"
-                                        placeholder="123"
-                                        maxlength="4"
-                                        required
-                                    >
-                                </div>
-                            </div>
-                            
-                            <!-- Submit Button -->
-                            <button type="submit" class="payment-btn">
-                                <i class="fas fa-lock"></i>
-                                Mejorar a Pro - ${{ plan_price }}/mes
-                            </button>
-                            
-                            <div class="text-center text-sm text-gray-500 mt-4">
-                                <i class="fas fa-shield-alt text-turquoise"></i>
-                                <span class="ml-2">Pago 100% seguro y encriptado</span>
-                            </div>
-                        </form>
-                        
+
                         <div class="mt-6 text-center">
                             <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-900 text-sm underline">
                                 Volver al dashboard
@@ -374,26 +310,7 @@
             }, { duration: 0.4, delay: stagger(0.1, { start: 0.6 }) });
         });
         
-        // Formatear número de tarjeta
-        document.querySelector('input[name="card_number"]').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '');
-            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-            e.target.value = formattedValue;
-        });
-        
-        // Formatear fecha de expiración
-        document.querySelector('input[name="card_expiry"]').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 2) {
-                value = value.substring(0, 2) + '/' + value.substring(2, 4);
-            }
-            e.target.value = value;
-        });
-        
-        // Solo números en CVV
-        document.querySelector('input[name="card_cvv"]').addEventListener('input', function(e) {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
+        // Ya no hay campos de tarjeta; solo mantenemos las animaciones de entrada.
     </script>
 </body>
 </html>

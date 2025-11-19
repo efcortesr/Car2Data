@@ -191,80 +191,28 @@
                     </div>
                 </div>
 
-                <!-- Payment Form -->
+                <!-- Contacto por WhatsApp en lugar de formulario de pago -->
                 <div class="glass-card rounded-2xl p-8" data-scroll="fade-left">
-                    <h3 class="text-2xl font-bold text-white mb-6">Información de Pago</h3>
-                    
-                    <form method="POST" id="payment-form">
-                        {% csrf_token %}
-                        
-                        <div class="space-y-4">
-                            <!-- Cardholder Name -->
-                            <div>
-                                <label class="block text-white mb-2 font-medium">Nombre del titular</label>
-                                <input 
-                                    type="text" 
-                                    name="cardholder_name" 
-                                    class="card-input"
-                                    placeholder="Juan Pérez"
-                                    required
-                                >
-                            </div>
-                            
-                            <!-- Card Number -->
-                            <div>
-                                <label class="block text-white mb-2 font-medium">Número de tarjeta</label>
-                                <input 
-                                    type="text" 
-                                    name="card_number" 
-                                    class="card-input"
-                                    placeholder="4242 4242 4242 4242"
-                                    maxlength="19"
-                                    required
-                                >
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <!-- Expiry Date -->
-                                <div>
-                                    <label class="block text-white mb-2 font-medium">Fecha de expiración</label>
-                                    <input 
-                                        type="text" 
-                                        name="expiry" 
-                                        class="card-input"
-                                        placeholder="MM/YY"
-                                        maxlength="5"
-                                        required
-                                    >
-                                </div>
-                                
-                                <!-- CVV -->
-                                <div>
-                                    <label class="block text-white mb-2 font-medium">CVV</label>
-                                    <input 
-                                        type="text" 
-                                        name="cvv" 
-                                        class="card-input"
-                                        placeholder="123"
-                                        maxlength="4"
-                                        required
-                                    >
-                                </div>
-                            </div>
-                            
-                            <!-- Submit Button -->
-                            <button type="submit" class="payment-btn magnetic-btn ripple-effect mt-6">
-                                <i class="fas fa-lock mr-2"></i>
-                                Mejorar a Pro - ${{ plan_price }}/mes
-                            </button>
-                            
-                            <div class="secure-badge">
-                                <i class="fas fa-shield-alt"></i>
-                                <span>Pago 100% seguro y encriptado</span>
-                            </div>
-                        </div>
-                    </form>
-                    
+                    <h3 class="text-2xl font-bold text-white mb-4">Habla con nuestro equipo</h3>
+                    <p class="text-white/80 mb-6">
+                        Si quieres mejorar tu plan, contáctanos directamente por WhatsApp y te ayudaremos a completar el proceso.
+                    </p>
+
+                    <a
+                        href="https://wa.me/573124243234?text=Hola%20equipo%20car2data%2C%20estoy%20interesado%20en%20mejorar%20mi%20plan"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="payment-btn magnetic-btn ripple-effect mt-4 flex items-center justify-center gap-2"
+                    >
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Escribir por WhatsApp</span>
+                    </a>
+
+                    <div class="secure-badge">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Te atenderemos personalmente para ayudarte a mejorar tu plan.</span>
+                    </div>
+
                     <div class="mt-6 text-center">
                         <a href="{% url 'documents:dashboard' %}" class="text-white/60 hover:text-white text-sm transition-all">
                             <i class="fas fa-arrow-left mr-2"></i>

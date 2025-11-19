@@ -639,23 +639,32 @@ class DocumentGenerator:
             ]))
             elements.append(registro_table)
             elements.append(Spacer(1, 30))
-            
+
+            # Observaciones (si vienen en el formulario)
+            observaciones = form_data.get('observaciones', '')
+            if observaciones:
+                obs_section = Paragraph("OBSERVACIONES", self.styles['Subtitle'])
+                elements.append(obs_section)
+                obs_paragraph = Paragraph(observaciones.replace('\n', '<br/>'), self.styles['Normal'])
+                elements.append(obs_paragraph)
+                elements.append(Spacer(1, 20))
+
             # Fecha y firma
             fecha_info = f"Fecha de diligenciamiento: {datetime.now().strftime('%d/%m/%Y')}"
             elements.append(Paragraph(fecha_info, self.styles['Normal']))
             elements.append(Spacer(1, 40))
-            
+
             firma_info = "____________________________\nFirma del solicitante"
             elements.append(Paragraph(firma_info, self.styles['Normal']))
-            
+
             doc.build(elements)
             logger.info(f"Formulario de trámite generado exitosamente (fallback): {documento_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error generando formulario de trámite (fallback): {str(e)}")
             return False
-    
+
     def number_to_words(self, number):
         """Convierte números a palabras (implementación básica)"""
         try:
@@ -668,7 +677,7 @@ class DocumentGenerator:
             
         except Exception:
             return "N/A"
-    
+
     def get_document_path(self, form_type, document_id):
         """Genera la ruta donde se guardará el documento"""
         filename = f"{form_type}_{document_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"

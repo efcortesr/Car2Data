@@ -4,8 +4,8 @@ from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.views.generic import CreateView, TemplateView, UpdateView
 from django.contrib.auth.models import User
 from django.contrib.auth import forms as auth_forms
-from .forms import UserProfileForm
-from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
+from .forms import UserProfileForm, CustomUserCreationForm
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -25,7 +25,7 @@ class LoginView(DjangoLoginView):
 
 class RegisterView(CreateView):
     model = User
-    form_class = UserCreationForm
+    form_class = CustomUserCreationForm
     template_name = 'authentication/register.html'
     success_url = reverse_lazy('authentication:verify_email_prompt')
     

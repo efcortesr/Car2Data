@@ -48,7 +48,7 @@ class PDFFormFiller:
         self.field_coordinates = {
             'formulario_tramite': {
                 # Placa - Campo 2 (corregido para alinearse con campos reales)
-                'placa_letras': (745, 495),    # Posición exacta del campo letras
+                'placa_letras': (750, 495),    # Posición exacta del campo letras
                 'placa_numeros': (770, 495),   # Posición exacta del campo números
 
                 # Campos de vehículo (reposicionados según cuadrícula)
@@ -74,13 +74,13 @@ class PDFFormFiller:
 
                 # Clase de vehículo (reposicionados según cuadrícula)
                 'clase_automovil': (30, 370),
-                'clase_bus': (70, 370),
+                'clase_bus': (90, 370),
                 'clase_buseta': (120, 370),
                 'clase_camion': (170, 370),
                 'clase_campero': (270, 370),
                 'clase_camioneta': (220, 370),
                 'clase_tractocamion': (30, 370),
-                'clase_motocicleta': (70, 350),
+                'clase_motocicleta': (90, 350),
                 'clase_motocarro': (120, 350),
                 'clase_mototriciclo': (170, 350),
                 'clase_cuatrimoto': (220, 350),
@@ -377,13 +377,17 @@ class PDFFormFiller:
         self._draw_text_if_coord(canvas_obj, coords, 'organismo_transito', 'RUNT')
         
         # PLACA - dividir en letras y números
-        placa = str(getv('placa')).upper().strip()
-        if placa:
-            # Asumiendo formato AAA123 o AAA12B
-            letras = ''.join(filter(str.isalpha, placa))
-            numeros = ''.join(filter(str.isdigit, placa))
-            if len(placa) > len(letras) + len(numeros): # Maneja formatos mixtos como motocicletas
-                numeros = placa[len(letras):]
+        placa_raw = str(getv('placa')).upper().strip()
+        if placa_raw:
+            # Limpiar caracteres no alfanuméricos (ej. guiones, espacios)
+            placa = ''.join(ch for ch in placa_raw if ch.isalnum())
+            # Asumir siempre tres primeros caracteres como letras (AAA123 o AAA12A, motocicletas)
+            if len(placa) <= 3:
+                letras = placa
+                numeros = ''
+            else:
+                letras = placa[:3]
+                numeros = placa[3:]
 
             # Dibujo agrupado para conservar separación al ajustar por overflow
             self._draw_plate_group(canvas_obj, coords, letras, numeros)
@@ -527,6 +531,9 @@ class PDFFormFiller:
             self._draw_checkbox_if_coord(canvas_obj, coords, 'comprador_pasaporte', True)
         elif tipo_doc_compr:
             self._draw_checkbox_if_coord(canvas_obj, coords, 'comprador_otro_doc', True)
+        
+        # OBSERVACIONES
+        self._draw_text_fit_if_coord(canvas_obj, coords, 'observaciones', data.get('observaciones', ''), max_width=350)
 
         # DATOS DE IMPORTACIÓN
         self._draw_text_if_coord(canvas_obj, coords, 'declaracion_importacion', data.get('declaracion_importacion', ''))
