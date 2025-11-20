@@ -233,6 +233,7 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "")
 
 # Email Configuration
+DISABLE_EMAIL_VERIFICATION = os.environ.get('DISABLE_EMAIL_VERIFICATION', 'False') == 'True'
 FORCE_SMTP_EMAIL = os.environ.get('FORCE_SMTP_EMAIL', 'False') == 'True'
 
 if FORCE_SMTP_EMAIL or not DEBUG:

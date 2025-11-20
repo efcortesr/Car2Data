@@ -31,9 +31,12 @@ class RegisterView(CreateView):
     success_url = reverse_lazy('authentication:verify_email_prompt')
     
     def form_valid(self, form):
-        # Guardar usuario pero marcarlo como inactivo hasta verificar email
+        # Permitir desactivar temporalmente la verificación por email con PIN
         user = form.save(commit=False)
-        user.is_active = False
+        disable_email_verification = getattr(settings, 'DISABLE_EMAIL_VERIFICATION', False)
+
+        # Si la verificación está desactivada, el usuario se crea activo
+        user.is_active = True if disable_email_verification else False
         user.save()
         
         # TODOS los usuarios nuevos inician con plan FREE (starter)
@@ -43,8 +46,14 @@ class RegisterView(CreateView):
             payment_status='completed',
             documents_used=0
         )
-        
-        # Generar y enviar código de verificación
+
+        if disable_email_verification:
+            # Sin verificación: iniciar sesión y enviar al dashboard directamente
+            login(self.request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(self.request, 'Cuenta creada. Verificación por correo desactivada temporalmente.')
+            return redirect('documents:dashboard')
+
+        # Flujo normal con verificación por PIN
         code = VerificationCode.generate_code()
         verification = VerificationCode.objects.create(
             user=user,
